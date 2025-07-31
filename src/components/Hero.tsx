@@ -1,12 +1,20 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ExternalLink, GitBranch } from "lucide-react";
+import { ExternalLink, GitBranch, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import heroIcon from "@/assets/hero-icon.png";
 
-const Hero = () => {
+interface HeroProps {
+  onAnalysisStart: (repoUrl: string) => void;
+}
+
+const Hero = ({ onAnalysisStart }: HeroProps) => {
   const [repoUrl, setRepoUrl] = useState("");
   const [isValidUrl, setIsValidUrl] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const { toast } = useToast();
 
   const validateGitHubUrl = (url: string) => {
     const githubRegex = /^https:\/\/github\.com\/[\w\-\.]+\/[\w\-\.]+\/?$/;
@@ -21,10 +29,32 @@ const Hero = () => {
     validateGitHubUrl(url);
   };
 
-  const handleAnalyze = () => {
-    if (isValidUrl) {
-      console.log("Analyzing repository:", repoUrl);
-      // TODO: Implement repository analysis
+  const handleAnalyze = async () => {
+    if (!isValidUrl || isAnalyzing) return;
+    
+    setIsAnalyzing(true);
+    onAnalysisStart(repoUrl);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-repo', {
+        body: { repoUrl }
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Analysis Complete",
+        description: `Successfully analyzed ${data.name}`,
+      });
+    } catch (error) {
+      console.error('Analysis failed:', error);
+      toast({
+        title: "Analysis Failed",
+        description: "Could not analyze the repository. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -82,11 +112,15 @@ const Hero = () => {
             <Button 
               variant="hero"
               onClick={handleAnalyze}
-              disabled={!isValidUrl}
+              disabled={!isValidUrl || isAnalyzing}
               className="h-14"
             >
-              <ExternalLink className="w-5 h-5" />
-              Open in IDE
+              {isAnalyzing ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <ExternalLink className="w-5 h-5" />
+              )}
+              {isAnalyzing ? "Analyzing..." : "Open in IDE"}
             </Button>
           </div>
           

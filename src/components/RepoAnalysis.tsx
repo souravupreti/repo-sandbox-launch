@@ -11,31 +11,29 @@ import {
   CheckCircle, 
   AlertCircle,
   Clock,
-  ExternalLink
+  ExternalLink,
+  ArrowLeft
 } from "lucide-react";
+import { RepoData } from "@/hooks/useRepoAnalysis";
 
-interface RepoData {
-  name: string;
-  framework: string;
-  language: string;
-  hasEnvFile: boolean;
-  envVarsNeeded: string[];
-  buildStatus: "pending" | "building" | "success" | "error";
-  previewUrl?: string;
+interface RepoAnalysisProps {
+  repoData: RepoData | null;
+  onBack: () => void;
 }
 
-const RepoAnalysis = () => {
-  const [repoData] = useState<RepoData>({
-    name: "next.js-commerce",
-    framework: "Next.js",
-    language: "TypeScript",
-    hasEnvFile: false,
-    envVarsNeeded: ["NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY", "STRIPE_SECRET_KEY", "DATABASE_URL"],
-    buildStatus: "success",
-    previewUrl: "https://preview.codeunbox.dev/abc123"
-  });
-
-  const [buildProgress, setBuildProgress] = useState(100);
+const RepoAnalysis = ({ repoData, onBack }: RepoAnalysisProps) => {
+  const [buildProgress] = useState(repoData?.buildStatus === "building" ? 65 : 100);
+  
+  if (!repoData) {
+    return (
+      <div className="min-h-screen bg-gradient-hero flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Initializing analysis...</p>
+        </div>
+      </div>
+    );
+  }
 
   const getStatusIcon = () => {
     switch (repoData.buildStatus) {
@@ -64,20 +62,28 @@ const RepoAnalysis = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">{repoData.name}</h1>
-          <p className="text-muted-foreground">Repository Analysis & Preview</p>
+    <div className="min-h-screen bg-gradient-hero">
+      <div className="max-w-4xl mx-auto p-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" onClick={onBack} className="p-2">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">{repoData.name}</h1>
+              <p className="text-muted-foreground">Repository Analysis & Preview</p>
+            </div>
+          </div>
+          {repoData.buildStatus === "success" && repoData.previewUrl && (
+            <Button variant="gradient" size="lg" asChild>
+              <a href={repoData.previewUrl} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="w-5 h-5" />
+                Open Preview
+              </a>
+            </Button>
+          )}
         </div>
-        {repoData.buildStatus === "success" && repoData.previewUrl && (
-          <Button variant="gradient" size="lg">
-            <ExternalLink className="w-5 h-5" />
-            Open Preview
-          </Button>
-        )}
-      </div>
 
       {/* Status Card */}
       <Card className="p-6 bg-card/50 backdrop-blur">
@@ -167,25 +173,40 @@ const RepoAnalysis = () => {
         </Card>
       </div>
 
-      {/* Build Logs */}
-      <Card className="p-6 bg-card/50 backdrop-blur">
-        <div className="flex items-center gap-3 mb-4">
-          <Play className="w-5 h-5 text-primary" />
-          <h3 className="text-xl font-semibold">Build Logs</h3>
-        </div>
-        
-        <div className="bg-black/50 rounded-lg p-4 font-mono text-sm space-y-1 max-h-64 overflow-y-auto">
-          <div className="text-green-400">✓ Repository cloned successfully</div>
-          <div className="text-blue-400">→ Detected Next.js framework</div>
-          <div className="text-blue-400">→ Installing dependencies...</div>
-          <div className="text-green-400">✓ Dependencies installed</div>
-          <div className="text-blue-400">→ Building application...</div>
-          <div className="text-green-400">✓ Build completed successfully</div>
-          <div className="text-yellow-400">⚠ Missing environment variables detected</div>
-          <div className="text-green-400">✓ Container started on port 3000</div>
-          <div className="text-cyan-400">🚀 Preview available at: {repoData.previewUrl}</div>
-        </div>
-      </Card>
+        {/* Build Logs */}
+        <Card className="p-6 bg-card/50 backdrop-blur">
+          <div className="flex items-center gap-3 mb-4">
+            <Play className="w-5 h-5 text-primary" />
+            <h3 className="text-xl font-semibold">Build Logs</h3>
+          </div>
+          
+          <div className="bg-black/50 rounded-lg p-4 font-mono text-sm space-y-1 max-h-64 overflow-y-auto">
+            <div className="text-green-400">✓ Repository cloned successfully</div>
+            <div className="text-blue-400">→ Detected {repoData.framework} framework</div>
+            <div className="text-blue-400">→ Installing dependencies...</div>
+            <div className="text-green-400">✓ Dependencies installed</div>
+            <div className="text-blue-400">→ Building application...</div>
+            {repoData.buildStatus === "success" && (
+              <>
+                <div className="text-green-400">✓ Build completed successfully</div>
+                {repoData.envVarsNeeded.length > 0 && (
+                  <div className="text-yellow-400">⚠ Missing environment variables detected</div>
+                )}
+                <div className="text-green-400">✓ Container started on port 3000</div>
+                {repoData.previewUrl && (
+                  <div className="text-cyan-400">🚀 Preview available at: {repoData.previewUrl}</div>
+                )}
+              </>
+            )}
+            {repoData.buildStatus === "building" && (
+              <div className="text-blue-400 animate-pulse">→ Building in progress...</div>
+            )}
+            {repoData.buildStatus === "error" && (
+              <div className="text-red-400">✗ Build failed - check repository configuration</div>
+            )}
+          </div>
+        </Card>
+      </div>
     </div>
   );
 };
