@@ -18,22 +18,46 @@ interface RepoAnalysis {
 
 async function analyzeGitHubRepo(repoUrl: string): Promise<RepoAnalysis> {
   try {
-    // Extract owner and repo from GitHub URL
-    const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/)
-    if (!match) throw new Error('Invalid GitHub URL')
+    // Extract owner and repo from GitHub URL - handle both .git and non-.git URLs
+    const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+?)(?:\.git)?(?:\/.*)?$/)
+    if (!match) throw new Error('Invalid GitHub URL format')
     
     const [, owner, repo] = match
     const cleanRepo = repo.replace(/\.git$/, '')
     
-    // Fetch repository info from GitHub API
-    const repoResponse = await fetch(`https://api.github.com/repos/${owner}/${cleanRepo}`)
-    if (!repoResponse.ok) throw new Error('Repository not found')
+    console.log(`Fetching repo info for ${owner}/${cleanRepo}`)
+    
+    // Fetch repository info from GitHub API with better error handling
+    const repoResponse = await fetch(`https://api.github.com/repos/${owner}/${cleanRepo}`, {
+      headers: {
+        'User-Agent': 'CodeUnbox/1.0',
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    })
+    
+    if (!repoResponse.ok) {
+      const errorText = await repoResponse.text()
+      console.error(`GitHub API error: ${repoResponse.status} - ${errorText}`)
+      throw new Error(`Repository not accessible: ${repoResponse.status === 404 ? 'Not found or private' : 'API error'}`)
+    }
     
     const repoData = await repoResponse.json()
     
-    // Fetch repository contents
-    const contentsResponse = await fetch(`https://api.github.com/repos/${owner}/${cleanRepo}/contents`)
-    const contents = await contentsResponse.json()
+    
+    // Fetch repository contents with better error handling
+    const contentsResponse = await fetch(`https://api.github.com/repos/${owner}/${cleanRepo}/contents`, {
+      headers: {
+        'User-Agent': 'CodeUnbox/1.0',
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    })
+    
+    if (!contentsResponse.ok) {
+      console.error(`Contents API error: ${contentsResponse.status}`)
+      // If we can't get contents, still proceed with basic repo info
+    }
+    
+    const contents = contentsResponse.ok ? await contentsResponse.json() : []
     
     // Detect framework and language
     const packageJsonFile = contents.find((file: any) => file.name === 'package.json')
@@ -48,36 +72,59 @@ async function analyzeGitHubRepo(repoUrl: string): Promise<RepoAnalysis> {
     
     // Detect framework
     if (packageJsonFile) {
-      const packageResponse = await fetch(packageJsonFile.download_url)
-      const packageJson = await packageResponse.json()
-      
-      if (packageJson.dependencies) {
-        if (packageJson.dependencies.react || packageJson.dependencies.next) {
-          framework = packageJson.dependencies.next ? 'Next.js' : 'React'
-        } else if (packageJson.dependencies.vue) {
-          framework = 'Vue.js'
-        } else if (packageJson.dependencies.express) {
-          framework = 'Express.js'
-        } else if (packageJson.dependencies.svelte) {
-          framework = 'Svelte'
+      try {
+        const packageResponse = await fetch(packageJsonFile.download_url, {
+          headers: {
+            'User-Agent': 'CodeUnbox/1.0',
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        })
+        const packageJson = await packageResponse.json()
+        
+        if (packageJson.dependencies) {
+          if (packageJson.dependencies.react || packageJson.dependencies.next) {
+            framework = packageJson.dependencies.next ? 'Next.js' : 'React'
+          } else if (packageJson.dependencies.vue) {
+            framework = 'Vue.js'
+          } else if (packageJson.dependencies.express) {
+            framework = 'Express.js'
+          } else if (packageJson.dependencies.svelte) {
+            framework = 'Svelte'
+          }
         }
+        language = 'TypeScript'
+      } catch (error) {
+        console.error('Error parsing package.json:', error)
+        framework = 'Node.js'
       }
-      language = 'TypeScript'
-    } else if (requirementsFile) {
-      framework = 'Python'
-      language = 'Python'
-    } else if (dockerFile) {
-      framework = 'Docker'
+    } else {
+      // Check for common web files if no package.json
+      const htmlFiles = contents.filter((file: any) => file.name.endsWith('.html'))
+      const jsFiles = contents.filter((file: any) => file.name.endsWith('.js'))
+      const cssFiles = contents.filter((file: any) => file.name.endsWith('.css'))
+      
+      if (htmlFiles.length > 0 || jsFiles.length > 0 || cssFiles.length > 0) {
+        framework = 'Static Website'
+        language = 'JavaScript'
+      }
     }
     
     // Extract environment variables from .env.example
     if (envExampleFile) {
-      const envResponse = await fetch(envExampleFile.download_url)
-      const envContent = await envResponse.text()
-      const envLines = envContent.split('\n').filter(line => 
-        line.trim() && !line.startsWith('#') && line.includes('=')
-      )
-      envVarsNeeded = envLines.map(line => line.split('=')[0].trim())
+      try {
+        const envResponse = await fetch(envExampleFile.download_url, {
+          headers: {
+            'User-Agent': 'CodeUnbox/1.0'
+          }
+        })
+        const envContent = await envResponse.text()
+        const envLines = envContent.split('\n').filter(line => 
+          line.trim() && !line.startsWith('#') && line.includes('=')
+        )
+        envVarsNeeded = envLines.map(line => line.split('=')[0].trim())
+      } catch (error) {
+        console.error('Error parsing .env.example:', error)
+      }
     }
     
     // Generate preview URL (mock for now)

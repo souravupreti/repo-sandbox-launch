@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import CodeViewer from "@/components/CodeViewer";
 import { 
   FileText, 
   Package, 
@@ -173,40 +174,48 @@ const RepoAnalysis = ({ repoData, onBack }: RepoAnalysisProps) => {
         </Card>
       </div>
 
-        {/* Build Logs */}
-        <Card className="p-6 bg-card/50 backdrop-blur">
-          <div className="flex items-center gap-3 mb-4">
-            <Play className="w-5 h-5 text-primary" />
-            <h3 className="text-xl font-semibold">Build Logs</h3>
-          </div>
-          
-          <div className="bg-black/50 rounded-lg p-4 font-mono text-sm space-y-1 max-h-64 overflow-y-auto">
-            <div className="text-green-400">✓ Repository cloned successfully</div>
-            <div className="text-blue-400">→ Detected {repoData.framework} framework</div>
-            <div className="text-blue-400">→ Installing dependencies...</div>
-            <div className="text-green-400">✓ Dependencies installed</div>
-            <div className="text-blue-400">→ Building application...</div>
-            {repoData.buildStatus === "success" && (
-              <>
-                <div className="text-green-400">✓ Build completed successfully</div>
-                {repoData.envVarsNeeded.length > 0 && (
-                  <div className="text-yellow-400">⚠ Missing environment variables detected</div>
-                )}
-                <div className="text-green-400">✓ Container started on port 3000</div>
-                {repoData.previewUrl && (
-                  <div className="text-cyan-400">🚀 Preview available at: {repoData.previewUrl}</div>
-                )}
-              </>
-            )}
-            {repoData.buildStatus === "building" && (
-              <div className="text-blue-400 animate-pulse">→ Building in progress...</div>
-            )}
-            {repoData.buildStatus === "error" && (
-              <div className="text-red-400">✗ Build failed - check repository configuration</div>
-            )}
-          </div>
-        </Card>
-      </div>
+      {/* Code Viewer */}
+      {repoData.files && repoData.files.length > 0 && (
+        <CodeViewer 
+          files={repoData.files} 
+          repoUrl={`https://github.com/${repoData.name}`}
+        />
+      )}
+
+      {/* Build Logs */}
+      <Card className="p-6 bg-card/50 backdrop-blur">
+        <div className="flex items-center gap-3 mb-4">
+          <Play className="w-5 h-5 text-primary" />
+          <h3 className="text-xl font-semibold">Build Logs</h3>
+        </div>
+        
+        <div className="bg-black/50 rounded-lg p-4 font-mono text-sm space-y-1 max-h-64 overflow-y-auto">
+          <div className="text-green-400">✓ Repository cloned successfully</div>
+          <div className="text-blue-400">→ Detected {repoData.framework} framework</div>
+          <div className="text-blue-400">→ Installing dependencies...</div>
+          <div className="text-green-400">✓ Dependencies installed</div>
+          <div className="text-blue-400">→ Building application...</div>
+          {repoData.buildStatus === "success" && (
+            <>
+              <div className="text-green-400">✓ Build completed successfully</div>
+              {repoData.envVarsNeeded.length > 0 && (
+                <div className="text-yellow-400">⚠ Missing environment variables detected</div>
+              )}
+              <div className="text-green-400">✓ Container started on port 3000</div>
+              {repoData.previewUrl && (
+                <div className="text-cyan-400">🚀 Preview available at: {repoData.previewUrl}</div>
+              )}
+            </>
+          )}
+          {repoData.buildStatus === "building" && (
+            <div className="text-blue-400 animate-pulse">→ Building in progress...</div>
+          )}
+          {repoData.buildStatus === "error" && (
+            <div className="text-red-400">✗ Build failed - check repository configuration</div>
+          )}
+        </div>
+      </Card>
+    </div>
     </div>
   );
 };
