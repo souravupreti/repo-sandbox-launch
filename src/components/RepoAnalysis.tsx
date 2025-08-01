@@ -77,12 +77,19 @@ const RepoAnalysis = ({ repoData, onBack }: RepoAnalysisProps) => {
             </div>
           </div>
           {repoData.buildStatus === "success" && repoData.previewUrl && (
-            <Button variant="gradient" size="lg" asChild>
-              <a href={repoData.previewUrl} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="w-5 h-5" />
-                Open Preview
-              </a>
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="gradient" size="lg" asChild>
+                <a href={repoData.previewUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="w-5 h-5" />
+                  Open Preview
+                </a>
+              </Button>
+              <Button variant="outline" size="lg" asChild>
+                <a href={`https://stackblitz.com/github/${repoData.name.replace('https://github.com/', '')}`} target="_blank" rel="noopener noreferrer">
+                  StackBlitz
+                </a>
+              </Button>
+            </div>
           )}
         </div>
 
@@ -173,6 +180,84 @@ const RepoAnalysis = ({ repoData, onBack }: RepoAnalysisProps) => {
           </div>
         </Card>
       </div>
+
+      {/* Live Preview */}
+      {repoData.buildStatus === "success" && repoData.previewUrl && (
+        <Card className="p-6 bg-card/50 backdrop-blur">
+          <div className="flex items-center gap-3 mb-4">
+            <ExternalLink className="w-5 h-5 text-primary" />
+            <h3 className="text-xl font-semibold">Live Preview</h3>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="border rounded-lg overflow-hidden bg-background">
+              <iframe
+                src={repoData.previewUrl}
+                className="w-full h-96"
+                title="Repository Preview"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation"
+                onError={(e) => {
+                  console.warn('Preview iframe failed to load:', e);
+                }}
+                onLoad={() => {
+                  console.log('Preview loaded successfully');
+                }}
+              />
+            </div>
+            
+            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+              <span>• Preview powered by CodeSandbox</span>
+              <span>• May take a moment to load</span>
+              <span>• Click "Open Preview" for full screen</span>
+            </div>
+            
+            {/* Alternative Preview Options */}
+            <details className="border-t pt-4">
+              <summary className="text-sm font-medium cursor-pointer hover:text-primary">
+                Try alternative preview services
+              </summary>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Button variant="outline" size="sm" asChild>
+                  <a 
+                    href={`https://stackblitz.com/github/${repoData.name.replace('https://github.com/', '')}`}
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                  >
+                    StackBlitz
+                  </a>
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <a 
+                    href={`https://gitpod.io/#https://github.com/${repoData.name.replace('https://github.com/', '')}`}
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                  >
+                    Gitpod
+                  </a>
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <a 
+                    href="https://app.netlify.com/drop"
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                  >
+                    Deploy to Netlify
+                  </a>
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <a 
+                    href={`https://vercel.com/new/clone?repository-url=https://github.com/${repoData.name.replace('https://github.com/', '')}`}
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                  >
+                    Deploy to Vercel
+                  </a>
+                </Button>
+              </div>
+            </details>
+          </div>
+        </Card>
+      )}
 
       {/* Code Viewer */}
       {repoData.files && repoData.files.length > 0 && (

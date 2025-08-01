@@ -127,18 +127,48 @@ async function analyzeGitHubRepo(repoUrl: string): Promise<RepoAnalysis> {
       }
     }
     
-    // Generate real preview URL using CodeSandbox
-    let previewUrl = undefined
+    // Generate multiple preview options for better reliability
+    const previewOptions = []
     
-    // For React/Next.js/Vue projects, create CodeSandbox preview
+    // For React/Next.js/Vue projects, provide multiple options
     if (framework !== 'Unknown' && framework !== 'Static Website') {
-      const sandboxUrl = `https://codesandbox.io/s/github/${owner}/${cleanRepo}`
-      previewUrl = sandboxUrl
+      previewOptions.push({
+        name: 'CodeSandbox',
+        url: `https://codesandbox.io/s/github/${owner}/${cleanRepo}`,
+        primary: true
+      })
+      previewOptions.push({
+        name: 'StackBlitz',
+        url: `https://stackblitz.com/github/${owner}/${cleanRepo}`,
+        primary: false
+      })
+      previewOptions.push({
+        name: 'Gitpod',
+        url: `https://gitpod.io/#https://github.com/${owner}/${cleanRepo}`,
+        primary: false
+      })
     } 
-    // For static websites, try GitHub Pages
+    // For static websites, provide multiple hosting options
     else if (framework === 'Static Website') {
-      previewUrl = `https://${owner}.github.io/${cleanRepo}`
+      previewOptions.push({
+        name: 'GitHub Pages',
+        url: `https://${owner}.github.io/${cleanRepo}`,
+        primary: true
+      })
+      previewOptions.push({
+        name: 'Netlify Drop',
+        url: `https://app.netlify.com/drop`,
+        primary: false
+      })
+      previewOptions.push({
+        name: 'Surge.sh',
+        url: `https://surge.sh`,
+        primary: false
+      })
     }
+    
+    // Use primary preview URL
+    const previewUrl = previewOptions.find(option => option.primary)?.url
     
     return {
       name: cleanRepo,
