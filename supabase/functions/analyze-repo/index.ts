@@ -127,9 +127,18 @@ async function analyzeGitHubRepo(repoUrl: string): Promise<RepoAnalysis> {
       }
     }
     
-    // Generate preview URL (mock for now)
-    const previewId = Math.random().toString(36).substring(7)
-    const previewUrl = `https://preview.codeunbox.dev/${previewId}`
+    // Generate real preview URL using CodeSandbox
+    let previewUrl = undefined
+    
+    // For React/Next.js/Vue projects, create CodeSandbox preview
+    if (framework !== 'Unknown' && framework !== 'Static Website') {
+      const sandboxUrl = `https://codesandbox.io/s/github/${owner}/${cleanRepo}`
+      previewUrl = sandboxUrl
+    } 
+    // For static websites, try GitHub Pages
+    else if (framework === 'Static Website') {
+      previewUrl = `https://${owner}.github.io/${cleanRepo}`
+    }
     
     return {
       name: cleanRepo,
